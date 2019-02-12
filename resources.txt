@@ -1,0 +1,11 @@
+Time series forecasting with LSTMs:
+https://machinelearningmastery.com/time-series-forecasting-long-short-term-memory-network-python/
+
+Good intro/background/eda:
+https://www.kaggle.com/allunia/shaking-earth
+
+Look into: Fourier transform, FFT, how it can be applied to this time series data
+
+Read your data mining book with regard to time series and sequence data. How can the data be transformed into other forms? How can it be segmented?
+
+Look into applied time series textbook/notes. Good way to brush up on times series knowledge.
