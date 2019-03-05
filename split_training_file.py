@@ -27,14 +27,14 @@ def save_earthquakes_as_pickles(data):
 
 	Parameters
 	----------
-	data: np.array
-		A numpy array of the data with the first column as the acoustic value
+	data: pd.DataFrame
+		A pandas data frame of the data with the first column as the acoustic value
 		and the second column as the time_to_failure
 	"""
-	quake_starts = get_quake_indices(data[:, 1])
-	segments = np.split(data, quake_starts[1:])
+	quake_starts = get_quake_indices(data.iloc[:, 1])
+	segments = np.split(data.values, quake_starts[1:])
 	for i, segment in enumerate(segments):
-		write_pickle(segment, os.path.join(root_folder, f'training_earthquakes/segment{i}'))
+		write_pickle(segment, os.path.join(root_folder, f'training_earthquakes/segment{i}.pkl'))
 
 
 def main():
