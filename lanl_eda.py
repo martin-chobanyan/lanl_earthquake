@@ -4,6 +4,7 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+from dtsckit.plot import set_plot_size
 
 
 ROOT_FOLDER = '/home/mchobanyan/data/kaggle/lanl_earthquake/'
@@ -63,6 +64,26 @@ def save_plots(mode, acoustic_bounds=None, time_bounds=None):
         fig, filename = plots[i]
         fig.savefig(os.path.join(ROOT_FOLDER, mode + '_images', filename + '.png'), format='png')
         plt.close()
+
+
+def differenced_plots(df, quake_starts):
+    # acoustic time series differenced
+    set_plot_size(14, 10)
+    first_quake_idx = quake_starts[1]
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    ax1.plot(list(range(100)), df.iloc[:first_quake_idx, 0][:100], marker='o', markersize=3)
+    ax1.set_title('first 100: raw time to failure')
+    ax1.set_ylabel('time to failure')
+    # ax1.plot(list(range(100)), df.iloc[:first_quake_idx, 0].diff()[:100])
+    # ax1.set_title('first 100: time to failure differenced')
+    # ax1.set_ylabel('time to failure')
+
+    ax2.plot(list(range(100)), df.iloc[:first_quake_idx, 0].diff(periods=10)[:100], marker='o', markersize=3)
+    ax2.set_title('first 100: time to failure differenced')
+    ax2.set_xlabel('obs')
+    ax2.set_ylabel('time to failure')
+    ax2.axhline(color='red', alpha=0.3)
+    plt.show()
 
 
 if __name__ == '__main__':

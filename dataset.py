@@ -1,39 +1,69 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
+import numpy as np
+import torch
 from torch.utils.data import Dataset
 
 
-def num_lines_in_file(filepath):
-    with open(filepath, 'r') as file:
-        return sum(1 for _ in file)
+# scale the data to mean=0, std=1
+def scale_acoustic(data):
+    scaled_data = (data - 4.5) / 10.735
+    return scaled_data
 
 
-class EarthquakeSegmentDataset(Dataset):
+class BaseDataGenerator(object):
+    def __init__(self, data, min_index, max_index=None,
+                 nsteps=150, step_length=1000,
+                 batch_size=32, num_batches=10000):
+        if max_index is None:
+            max_index = len(data) - 1
+        self.data = data
+        self.min_index = min_index
+        self.max_index = max_index
+        self.jump = min(nsteps * step_length, max_index - min_index)
+        self.batch_size = batch_size
+        self.num_batches = num_batches
 
-    def __init__(self, folder, seglen=1000):
+    def __call__(self):
+        start = np.random.randint(self.min_index, self.max_index - self.jump, self.batch_size)
+
+        acoustic_data = np.stack(self.data[i:i + self.jump, 0] for i in start)
+        acoustic_data = scale_acoustic(acoustic_data)
+
+        target_time = self.data[start + self.jump - 1, 1]
+        return torch.from_numpy(acoustic_data), torch.from_numpy(target_time)
+
+    def __iter__(self):
+        for i in range(self.num_batches):
+            yield self.__call__()
+
+
+class AutoEncoderDataGenerator(BaseDataGenerator):
+    def __init__(self, data, min_index, max_index=None,
+                 nsteps=150, step_length=1000,
+                 batch_size=32, num_batches=10000, transforms=None):
+        super().__init__(data, min_index, max_index, nsteps, step_length, batch_size, num_batches)
+        self.transforms = transforms
+
+    def __call__(self):
+        acoustic_data, _ = super().__call__()
+        if self.transforms is not None:
+            return self.transforms(acoustic_data), acoustic_data
+        else:
+            return acoustic_data, acoustic_data
+
+
+class FixedSegmentDataset(Dataset):
+    
+    def __init__(self, data, n):
         super().__init__()
-        self.folder = folder
-        self.seglen = seglen
-
-        # pattern = re.compile(r'segment(.*)\.csv')
-        # self.file_names = sorted(os.listdir(self.folder), key=lambda x: int(pattern.search(x).group(1)))
-        # self.earthquake_lengths = [num_lines_in_file(os.path.join(self.folder, file))-1 for file in self.file_names]
-
-        self.file_names = ['segment0.csv', 'segment1.csv', 'segment2.csv', 'segment3.csv', 'segment4.csv',
-                           'segment5.csv', 'segment6.csv', 'segment7.csv', 'segment8.csv', 'segment9.csv',
-                           'segment10.csv', 'segment11.csv', 'segment12.csv', 'segment13.csv', 'segment14.csv',
-                           'segment15.csv', 'segment16.csv']
-        self.earthquake_lengths = [5656574, 44429304, 54591478, 34095097, 48869367, 31010810, 27176955, 62009332,
-                                   30437370,
-                                   37101561, 43991032, 42442743, 33988602, 32976890, 56791029, 36417529, 7159807]
-
-    # NOTE: this approach maybe painfully slow because you will have to read the file in line by line...
+        self.data = data
+        self.n = n
+        
     def __getitem__(self, item):
-        # should be able to say 'I want the segment from i = 0 ... TOTAL_ROWS-1'
-        # this will require a Dataset that can span across several earthquake segments
-        # need a mapping of earthquake segment -> number of timesteps (file -> number of lines in file-1)
-        return
-
+        return self.data.loc[item:item+self.n, :].values
+    
     def __len__(self):
-        return sum(self.earthquake_lengths)
+        return len(self.data)-self.n+1
