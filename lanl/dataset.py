@@ -3,7 +3,6 @@
 
 
 import numpy as np
-import torch
 from torch.utils.data import Dataset
 
 
@@ -14,26 +13,48 @@ def scale_acoustic(data):
 
 
 class BaseDataGenerator(object):
-    def __init__(self, data, min_index, max_index=None,
-                 nsteps=150, step_length=1000,
-                 batch_size=32, num_batches=10000):
+    """Sample a random batch of a fixed-length segment from the data
+
+    Parameters
+    ----------
+    data: np.ndarray
+    min_index: int
+        The index of the lower bound, inclusive.
+    max_index: int
+        The index of the upper bound, exclusive. Full data if left None (default=None).
+    jump: int
+        The lengths of the sampled segments.
+    batch_size: int
+        The number of samples in the batch (default=32).
+    num_batches: int
+        The number of batches to generate if iterating (default=10000).
+    """
+    def __init__(self, data, min_index, max_index=None, jump=150000, batch_size=32, num_batches=10000):
         if max_index is None:
             max_index = len(data) - 1
         self.data = data
         self.min_index = min_index
         self.max_index = max_index
-        self.jump = min(nsteps * step_length, max_index - min_index)
+        self.jump = min(jump, max_index - min_index)
         self.batch_size = batch_size
         self.num_batches = num_batches
 
     def __call__(self):
-        start = np.random.randint(self.min_index, self.max_index - self.jump, self.batch_size)
+        """Generate a batch
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            First element holds the acoustic signals with shape (batch_size, jump).
+            Second element holds the time left until the next earthquake from the last position of each segment.
+        """
+        start = np.random.randint(self.min_index, self.max_index - self.jump + 1, self.batch_size)
 
         acoustic_data = np.stack(self.data[i:i + self.jump, 0] for i in start)
         acoustic_data = scale_acoustic(acoustic_data)
 
         target_time = self.data[start + self.jump - 1, 1]
-        return torch.from_numpy(acoustic_data), torch.from_numpy(target_time)
+        return acoustic_data, target_time
 
     def __iter__(self):
         for i in range(self.num_batches):
@@ -41,10 +62,8 @@ class BaseDataGenerator(object):
 
 
 class AutoEncoderDataGenerator(BaseDataGenerator):
-    def __init__(self, data, min_index, max_index=None,
-                 nsteps=150, step_length=1000,
-                 batch_size=32, num_batches=10000, transforms=None):
-        super().__init__(data, min_index, max_index, nsteps, step_length, batch_size, num_batches)
+    def __init__(self, data, min_index, max_index=None, jump=150000, batch_size=32, num_batches=10000, transforms=None):
+        super().__init__(data, min_index, max_index, jump, batch_size, num_batches)
         self.transforms = transforms
 
     def __call__(self):
@@ -55,15 +74,32 @@ class AutoEncoderDataGenerator(BaseDataGenerator):
             return acoustic_data, acoustic_data
 
 
+class FeatureDataGenerator(BaseDataGenerator):
+
+    def __init__(self, data, min_index, max_index=None, nsteps=150, step=1000,
+                 batch_size=32, num_batches=10000, transforms=None):
+        super().__init__(data, min_index, max_index, nsteps * step, batch_size, num_batches)
+        self.nsteps = nsteps
+        self.step = step
+        self.transforms = transforms
+
+    def __call__(self):
+        acoustic, times = super().__call__()
+        acoustic_steps = acoustic.reshape(self.batch_size, self.nsteps, self.step)
+        if self.transforms is not None:
+            acoustic_steps = self.transforms(acoustic_steps)
+        return acoustic_steps, times
+
+
 class FixedSegmentDataset(Dataset):
-    
+
     def __init__(self, data, n):
         super().__init__()
         self.data = data
         self.n = n
-        
+
     def __getitem__(self, item):
-        return self.data.loc[item:item+self.n, :].values
-    
+        return self.data.loc[item:item + self.n, :].values
+
     def __len__(self):
-        return len(self.data)-self.n+1
+        return len(self.data) - self.n + 1
