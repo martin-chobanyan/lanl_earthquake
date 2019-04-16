@@ -9,7 +9,8 @@ Only use this approach when we are limited by memory...
 import os
 import csv
 import numpy as np
-from dtsckit.utils import write_pickle
+import pandas as pd
+from dtsckit.utils import read_pickle, write_pickle
 
 
 THRESHOLD = 0.01  # an arbitrary value signifying a new earthquake segment
@@ -22,19 +23,26 @@ def get_quake_indices(quake_times):
 	return np.insert(time_steps, 0, 0)
 
 
-def save_earthquakes_as_pickles(data):
+# read each segment individually
+def read_segment(i):
+	return read_pickle(os.path.join(root_folder, f'training_earthquakes/segment{i}.pkl'))
+
+
+def save_earthquakes_as_pickles(train_file):
 	"""Save each distinct earthquake as a pickle
 
 	Parameters
 	----------
-	data: pd.DataFrame
-		A pandas data frame of the data with the first column as the acoustic value
-		and the second column as the time_to_failure
+	train_file: str
+		The file path to the training file
 	"""
+	data = pd.read_csv(train_file, dtype={"acoustic_data": np.float32, "time_to_failure": np.float32})
+	print(f'Finished reading {train_file}')
 	quake_starts = get_quake_indices(data.iloc[:, 1])
 	segments = np.split(data.values, quake_starts[1:])
 	for i, segment in enumerate(segments):
 		write_pickle(segment, os.path.join(root_folder, f'training_earthquakes/segment{i}.pkl'))
+		print(f'Wrote segment {i}')
 
 
 def main():
