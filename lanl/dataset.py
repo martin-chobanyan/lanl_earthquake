@@ -5,8 +5,8 @@
 import torch
 import numpy as np
 from scipy.stats import kurtosis, skew
-from .segmenter import SpikeSegmenter
-from .spectral import create_spectrogram
+from segmenter import SpikeSegmenter
+from spectral import create_spectrogram
 
 MU = 4.5
 SIGMA = 3.5
@@ -16,6 +16,11 @@ def standardize_acoustic(data, mu=MU, sigma=SIGMA):
     """Standardize the acoustic values with population mean mu and population standard deviation sigma"""
     return (data - mu) / sigma
 
+
+def get_quake_indices(quake_times):
+    """Get the starting indices of each earthquake segment from a pandas Series"""
+    time_steps = quake_times.index[quake_times.diff() > 0.1].values
+    return np.insert(time_steps, 0, 0)
 
 def get_sample(data, seqlen=150000):
     """Sample an acoustic sequence from the data
@@ -126,7 +131,7 @@ class SegFeatureGen(object):
         rows = np.random.randint(self.min_index + self.seq_len, self.max_index, self.batch_size)
         acoustic = np.zeros((self.batch_size, 1, self.seq_len))
         segment_features = []
-        spectograms = []
+        spectrograms = []
         targets = []
 
         for idx, row in enumerate(rows):
@@ -140,7 +145,7 @@ class SegFeatureGen(object):
             segment_features.append(np.stack(feature_seq))
 
             _, _, spec = create_spectrogram(acoustic_seq)
-            spectograms.append(np.expand_dims(spec, 1))
+            spectrograms.append(np.expand_dims(spec, 0))
 
             time_to_failure = self.data[row - 1, 1]
             targets.append(time_to_failure)
@@ -148,11 +153,44 @@ class SegFeatureGen(object):
             acoustic[idx][0] = acoustic_seq
 
         acoustic = torch.Tensor(acoustic)
-        spectograms = torch.Tensor(spectograms)
+        spectrograms = torch.Tensor(spectrograms)
         targets = torch.Tensor(targets)
 
-        return acoustic, segment_features, spectograms, targets
+        return acoustic, segment_features, spectrograms, targets
 
     def __iter__(self):
         while True:
             yield self.__call__()
+
+
+class TestSegFeatureGen(object):
+    """This class takes an existing acoustic sequence and builds the same features as in SegFeatureGen
+
+    The test files are already split into 150000 length acoustic sequences, without the time column.
+    This is why a separate data generator class is needed for these segments.
+    """
+    def __init__(self, segmenter):
+        self.segmenter = segmenter
+        self.mu = segmenter.mu
+        self.sigma = segmenter.sigma
+        self.window_size = segmenter.window_size
+
+    def __call__(self, acoustic):
+        segment_features = []
+        spectrograms = []
+
+        cutoffs = self.segmenter(acoustic)
+
+        feature_seq = []
+        acoustic = standardize_acoustic(acoustic)
+        for i, (s, e) in enumerate(cutoffs):
+            feature_seq.append(extract_segment_features(acoustic[s:e], s, self.window_size))
+        segment_features.append(np.stack(feature_seq))
+
+        _, _, spec = create_spectrogram(acoustic)
+        spectrograms.append(np.expand_dims(spec, 0))
+
+        acoustic = torch.Tensor(acoustic.reshape((1, 1, 150000)))
+        spectrograms = torch.Tensor(spectrograms)
+
+        return acoustic, segment_features, spectrograms

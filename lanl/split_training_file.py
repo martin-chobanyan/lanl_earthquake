@@ -11,15 +11,10 @@ import csv
 import numpy as np
 import pandas as pd
 from dtsckit.utils import read_pickle, write_pickle
+from dataset import get_quake_indices
 
 THRESHOLD = 0.01  # an arbitrary value signifying a new earthquake segment
 root_folder = '/home/mchobanyan/data/kaggle/lanl_earthquake/'
-
-
-def get_quake_indices(quake_times):
-    """Get the starting indices of each earthquake segment"""
-    time_steps = quake_times.index[quake_times.diff() > 0.1].values
-    return np.insert(time_steps, 0, 0)
 
 
 # read each segment individually

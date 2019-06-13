@@ -52,3 +52,12 @@ def plot_segments(axis, x, cutoffs, rand, mu, margin, alpha):
     axis.axhline(mu + margin, c='black', alpha=alpha)
     axis.axhline(mu, c='black')
 
+
+# this is a measure of variation as another potential approach to segmentation
+def cumsum_of_squares(x):
+    """Given a sequence x, calculate D_k = (C_k/C_T) - (k/T) where C_k = cumsum of x^2"""
+    n = len(x)
+    c_k = np.cumsum(x ** 2)
+    c_t = c_k[-1]
+    d_k = (c_k / c_t) - (np.arange(1, n + 1)) / n
+    return d_k
