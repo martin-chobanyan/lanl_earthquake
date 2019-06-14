@@ -11,7 +11,7 @@ import csv
 import numpy as np
 import pandas as pd
 from dtsckit.utils import read_pickle, write_pickle
-from dataset import get_quake_indices
+from lanl.dataset import get_quake_indices
 
 THRESHOLD = 0.01  # an arbitrary value signifying a new earthquake segment
 root_folder = '/home/mchobanyan/data/kaggle/lanl_earthquake/'

@@ -7,9 +7,9 @@ import torch
 from tqdm import tqdm
 from dtsckit.metrics import AverageKeeper
 from dtsckit.utils import read_pickle
-from dataset import SegFeatureGen, TestSegFeatureGen, get_quake_indices
-from model import FullModel, sort_pad_pack
-from segmenter import SpikeSegmenter
+from lanl.dataset import SegFeatureGen, TestSegFeatureGen, get_quake_indices
+from lanl.model import FullModel, sort_pad_pack
+from lanl.segmenter import SpikeSegmenter
 
 
 def train_batch(model, data_gen, criterion, optimizer, device, num_features):
@@ -128,10 +128,9 @@ def make_prediction(model, data_gen, num_features, test_data_dir, submission_fil
 
 if __name__ == '__main__':
     TRAIN_FILE = '/home/mchobanyan/data/kaggle/lanl_earthquake/train.pkl'
-    # MODEL_DIR = '/home/mchobanyan/data/kaggle/lanl_earthquake/models/final_model/'
-    MODEL_DIR = '/home/mchobanyan/data/kaggle/lanl_earthquake/models/foo/'
+    MODEL_DIR = '/home/mchobanyan/data/kaggle/lanl_earthquake/models/final_model/'
     TEST_DIR = '/home/mchobanyan/data/kaggle/lanl_earthquake/test'
-    SUBMISSION_FILEPATH = '/home/mchobanyan/data/kaggle/lanl_earthquake/foo_submission.csv'
+    SUBMISSION_FILEPATH = '/home/mchobanyan/data/kaggle/lanl_earthquake/submission.csv'
 
     df = read_pickle(TRAIN_FILE)
     data = df.values
@@ -158,18 +157,15 @@ if __name__ == '__main__':
     l1_criterion = torch.nn.L1Loss()
     adam_optim = torch.optim.Adam(full_model.parameters(), lr=0.0005)
 
-    # train_on_all(full_model, full_data_gen, num_epochs=3, num_train_batches=2)
-    #
-    # # pick the model to submit
-    # model_i = 20
-    # final_model_file = os.path.join(MODEL_DIR, f'full_model_{model_i}.pt')
+    train_on_all(full_model, full_data_gen, num_epochs=3, num_train_batches=2)
+
+    # pick the model to submit
+    model_i = 20
+    final_model_file = os.path.join(MODEL_DIR, f'full_model_{model_i}.pt')
 
     test_data_gen = TestSegFeatureGen(segmenter)
-    # final_model = full_model.load_state_dict(torch.load(final_model_file))
-    # final_model = final_model.eval()
-
-    # remove this once done...
-    final_model, _ = train_on_all(full_model, full_data_gen, num_epochs=3, num_train_batches=2)
+    final_model = full_model.load_state_dict(torch.load(final_model_file))
+    final_model = final_model.eval()
 
     print('done training...')
     make_prediction(final_model, test_data_gen, num_features, TEST_DIR, SUBMISSION_FILEPATH)

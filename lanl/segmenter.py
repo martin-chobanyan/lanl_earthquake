@@ -39,17 +39,17 @@ class SpikeSegmenter(object):
         return scaled_cutoffs
 
 
-def plot_segments(axis, x, cutoffs, rand, mu, margin, alpha):
+def plot_segments(axis, x, cutoffs, rand, mu, sigma, alpha):
     for (start, end) in cutoffs:
         segment = x[start:end]
         if rand:
             axis.plot(np.arange(start, end), segment)
         else:
-            color = BLUE if segment.std() > margin else ORANGE
+            color = BLUE if segment.std() > sigma else ORANGE
             axis.plot(np.arange(start, end), segment, c=color)
 
-    axis.axhline(mu - margin, c='black', alpha=alpha)
-    axis.axhline(mu + margin, c='black', alpha=alpha)
+    axis.axhline(mu - 2*sigma, c='black', alpha=alpha)
+    axis.axhline(mu + 2*sigma, c='black', alpha=alpha)
     axis.axhline(mu, c='black')
 
 

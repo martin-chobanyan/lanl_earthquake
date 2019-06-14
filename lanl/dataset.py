@@ -5,8 +5,8 @@
 import torch
 import numpy as np
 from scipy.stats import kurtosis, skew
-from segmenter import SpikeSegmenter
-from spectral import create_spectrogram
+from lanl.segmenter import SpikeSegmenter
+from lanl.spectral import create_spectrogram
 
 MU = 4.5
 SIGMA = 3.5
