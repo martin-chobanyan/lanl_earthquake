@@ -8,6 +8,30 @@ ORANGE = '#F79E2D'
 
 
 class SpikeSegmenter(object):
+    """Splits a signal into segments that are "excited" / spiked
+
+    This class takes a signal and creates regular sized bins. It then labels each bin as spiked or not, where spiked
+    means that the either the sample mean has deviated from the population mean by more than two standard deviations
+    or the sample standard deviation exceeds the population standard deviation. Adjacent bins with the same label are
+    then merged together.
+
+    Parameters
+    ----------
+    mu: float
+        The population mean
+    sigma: float
+        The population standard deviation
+    window_size: int
+        The size of the bins
+    only_spikes: bool
+        If true, returns only the cutoffs for the excited segments (default=False)
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        A list of tuples containing the cutoffs for each segment,
+        where the end index for a tuple is equal to the start index of the next tuple.
+    """
     def __init__(self, mu, sigma, window_size, only_spikes=False):
         self.mu = mu
         self.sigma = sigma
@@ -40,6 +64,26 @@ class SpikeSegmenter(object):
 
 
 def plot_segments(axis, x, cutoffs, rand, mu, sigma, alpha):
+    """Plot the segments of a signal on a given matplotlib axis
+
+    Parameters
+    ----------
+    axis: plt.axes
+        The axis on which to plot on
+    x: array_like
+        The raw acoustic signal
+    cutoffs: list[tuple[int, int]]
+        The start and end indices of each segment to plot.
+    rand: bool
+        If True then each segment is plotted with the default, random colors.
+        Otherwise, excited segments are in blue, normal segments in orange.
+    mu: float
+        The population mean for the signal. Will be drawn as a horizontal line.
+    sigma: float
+        The population standard deviation. The up/down margin will be drawn as mu +- 2*sigma
+    alpha: float
+        The alpha level (transparency) of the plot
+    """
     for (start, end) in cutoffs:
         segment = x[start:end]
         if rand:
